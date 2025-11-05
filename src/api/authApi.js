@@ -30,7 +30,7 @@ export const googleLoginRequest = async (idToken) => {
     });
     return response;
   } catch (error) {
-    console.error("Error en googleLoginRequest:", error);
+    console.error("Error de googleLoginRequest:", error);
     throw error;
   }
 };
