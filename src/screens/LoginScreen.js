@@ -39,7 +39,7 @@ export default function LoginScreen() {
       try {
         dataRes = JSON.parse(text);
       } catch (err) {
-        console.error("No se pudo parsear JSON:", err);
+        console.error("No pudo parsear JSON:", err);
         Alert.alert("Error", "El servidor devolvió una respuesta inválida.");
         return;
       }
@@ -54,7 +54,7 @@ export default function LoginScreen() {
 
     } catch (error) {
       console.error("Error login (catch):", error);
-      Alert.alert("Error", error.message || "Error al iniciar sesión.");
+      Alert.alert("Error", error.message || "Error para iniciar sesión.");
     }
   };
 
@@ -64,7 +64,7 @@ export default function LoginScreen() {
       const { idToken } = await GoogleSignin.signIn();
 
       if (!idToken) {
-        Alert.alert("Error", "No se pudo obtener el token de Google.");
+        Alert.alert("Error", "No se pudo obtener token de Google.");
         return;
       }
 
