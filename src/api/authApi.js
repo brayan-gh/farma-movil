@@ -1,11 +1,11 @@
 import { EXPO_PUBLIC_API_URL } from "@env";
 
-export const loginRequest = async (correo, password) => {
+export const loginRequest = async (email, password) => {
   const response = await fetch(`${EXPO_PUBLIC_API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include", 
-    body: JSON.stringify({ correo, password }),
+    credentials: "include",
+    body: JSON.stringify({ correo: email, password }),
   });
   return response;
 };
@@ -18,11 +18,19 @@ export const logoutRequest = async () => {
   return response;
 };
 
-export const googleLoginRequest = async (token) => {
-  const response = await fetch(`${EXPO_PUBLIC_API_URL}/firebase-login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-  });
-  return response;
+
+export const googleLoginRequest = async (idToken) => {
+  try {
+    const response = await fetch(`${EXPO_PUBLIC_API_URL}/googleLogin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token: idToken }),
+    });
+    return response;
+  } catch (error) {
+    console.error("Error en googleLoginRequest:", error);
+    throw error;
+  }
 };
