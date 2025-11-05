@@ -27,7 +27,15 @@ export default function LoginScreen() {
     resolver: yupResolver(loginSchema),
   });
 
-  const onSubmit = async (data) => {
+ const onSubmit = async (data) => {
+  try {
+    const response = await loginRequest(data.email, data.password);
+
+    // Intentamos leer la respuesta como texto primero
+    const text = await response.text();
+
+    // Intentamos convertir a JSON
+    let dataRes;
     try {
       const response = await loginRequest(data.email, data.password);
 
@@ -56,9 +64,32 @@ export default function LoginScreen() {
       console.error("Error login (catch):", error);
       Alert.alert("Error", error.message || "Error para iniciar sesión.");
     }
-  };
 
-  const onGoogleButtonPress = async () => {
+  } catch (error) {
+    console.error("Error login (catch):", error);
+    Alert.alert("Error", error.message || "Error al iniciar sesión.");
+  }
+};
+
+const onGoogleButtonPress = async () => {
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const { idToken } = await GoogleSignin.signIn();
+
+    if (!idToken) {
+      Alert.alert("Error", "No se pudo obtener el token de Google.");
+      return;
+    }
+
+    // Firebase login
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    await auth().signInWithCredential(googleCredential);
+
+    // Enviar token al backend
+    const response = await googleLoginRequest(idToken);
+    const text = await response.text();
+
+    let dataRes;
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const { idToken } = await GoogleSignin.signIn();
@@ -102,7 +133,17 @@ export default function LoginScreen() {
         Alert.alert("Error", "Servicios de Google Play no disponibles.");
       else Alert.alert("Error", "No se pudo iniciar sesión con Google.");
     }
-  };
+  } catch (error) {
+    console.error("Error con Google Sign-In:", error);
+    if (error.code === statusCodes.SIGN_IN_CANCELLED)
+      Alert.alert("Cancelado", "Inicio de sesión cancelado.");
+    else if (error.code === statusCodes.IN_PROGRESS)
+      Alert.alert("Espera", "Ya se está iniciando sesión.");
+    else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE)
+      Alert.alert("Error", "Servicios de Google Play no disponibles.");
+    else Alert.alert("Error", "No se pudo iniciar sesión con Google.");
+  }
+};
 
   return (
     <View style={styles.container}>
