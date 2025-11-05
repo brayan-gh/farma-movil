@@ -10,7 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { WEB_CLIENT_ID } from "@env";
 
 import { loginSchema } from "../schemas/loginSchema";
-import { loginRequest, googleLoginRequest } from "../api/authApi"; // ✅ corregido
+import { loginRequest, googleLoginRequest } from "../api/authApi";
 
 export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
@@ -27,51 +27,82 @@ export default function LoginScreen() {
     resolver: yupResolver(loginSchema),
   });
 
-  const onSubmit = async (data) => {
+ const onSubmit = async (data) => {
+  try {
+    const response = await loginRequest(data.email, data.password);
+
+    // Intentamos leer la respuesta como texto primero
+    const text = await response.text();
+
+    // Intentamos convertir a JSON
+    let dataRes;
     try {
-      const response = await loginRequest(data.email, data.password);
-      const dataRes = await response.json(); 
-
-      if (response.ok && dataRes.user) {
-        await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
-        login(dataRes.user);
-        Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre}`);
-        console.log("✅ Sesión iniciada:", dataRes.user);
-      } else {
-        Alert.alert("Error", dataRes.message || "Credenciales inválidas.");
-      }
-    } catch (error) {
-      console.error("❌ Error login:", error);
-      Alert.alert("Error", error.message || "Error al iniciar sesión.");
+      dataRes = JSON.parse(text);
+    } catch (err) {
+      console.error("No se pudo parsear JSON:", err);
+      Alert.alert("Error", "El servidor devolvió una respuesta inválida.");
+      return;
     }
-  };
+    // Verificamos si la respuesta fue exitosa
+    if (response.ok && dataRes.user) {
+      await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
+      login(dataRes.user);
+      Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre}`);
+    } else {
+      Alert.alert("Error", dataRes.message || "Credenciales inválidas.");
+    }
 
-  const onGoogleButtonPress = async () => {
+  } catch (error) {
+    console.error("Error login (catch):", error);
+    Alert.alert("Error", error.message || "Error al iniciar sesión.");
+  }
+};
+
+const onGoogleButtonPress = async () => {
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const { idToken } = await GoogleSignin.signIn();
+
+    if (!idToken) {
+      Alert.alert("Error", "No se pudo obtener el token de Google.");
+      return;
+    }
+
+    // Firebase login
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    await auth().signInWithCredential(googleCredential);
+
+    // Enviar token al backend
+    const response = await googleLoginRequest(idToken);
+    const text = await response.text();
+
+    let dataRes;
     try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
-      const googleCredential = auth.GoogleAuthProvider.credential(userInfo.idToken);
-      const userCred = await auth().signInWithCredential(googleCredential);
-      const idToken = await userCred.user.getIdToken();
-
-      const response = await googleLoginRequest(idToken); 
-      const dataRes = await response.json();
-
-      if (response.ok && dataRes.user) {
-        await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
-        login(dataRes.user);
-        Alert.alert("Bienvenido", `Hola ${dataRes.user.usuario}`);
-      } else {
-        Alert.alert("Error", dataRes.message || "No se pudo iniciar sesión con Google.");
-      }
-
-    } catch (error) {
-      console.error("❌ Error con Google Sign-In:", error);
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED)
-        Alert.alert("Cancelado", "Inicio de sesión cancelado.");
-      else Alert.alert("Error", "No se pudo iniciar sesión con Google.");
+      dataRes = JSON.parse(text);
+    } catch (err) {
+      console.error("Error al parsear JSON:", err);
+      Alert.alert("Error", "Respuesta inválida del servidor.");
+      return;
     }
-  };
+
+    if (response.ok && dataRes.user) {
+      await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
+      login(dataRes.user);
+      Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre || dataRes.user.correo}`);
+    } else {
+      Alert.alert("Error", dataRes.message || "No se pudo iniciar sesión con Google.");
+    }
+  } catch (error) {
+    console.error("Error con Google Sign-In:", error);
+    if (error.code === statusCodes.SIGN_IN_CANCELLED)
+      Alert.alert("Cancelado", "Inicio de sesión cancelado.");
+    else if (error.code === statusCodes.IN_PROGRESS)
+      Alert.alert("Espera", "Ya se está iniciando sesión.");
+    else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE)
+      Alert.alert("Error", "Servicios de Google Play no disponibles.");
+    else Alert.alert("Error", "No se pudo iniciar sesión con Google.");
+  }
+};
 
   return (
     <View style={styles.container}>

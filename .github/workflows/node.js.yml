@@ -33,28 +33,12 @@ jobs:
         env:
           JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
 
-      - name: Listar archivos generados
-        run: |
-          echo "Contenido del directorio APK"
-          ls -R android/app/build/outputs/apk || echo "No se encontró el directorio"
-          echo "Buscando app-release.apk..."
-          find . -name "app-release.apk"
-
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: FarmaMedic-Android
           path: android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Publicar release con APK
-        uses: softprops/action-gh-release@v2
-        with:
-          files: android/app/build/outputs/apk/release/app-release.apk
-          name: "FarmaMedic Android Build"
-          tag_name: "build-${{ github.run_number }}"
-          body: "Release automático generado por CI"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Mostrar URL del release
-        run: echo "URL del APK:https://github.com/${{ github.repository }}/releases/latest"
+      - name: Success message
+        if: success()
+        run: echo "Build Android completado correctamente"
