@@ -9,7 +9,7 @@ export const getExpedienteById = async (id) => {
 
     return JSON.parse(text);
   } catch (error) {
-    console.error("❌ Error en getExpedienteById:", error);
+    console.error("Error en getExpedienteById:", error);
     throw error;
   }
 };
