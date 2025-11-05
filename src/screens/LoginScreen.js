@@ -37,19 +37,32 @@ export default function LoginScreen() {
     // Intentamos convertir a JSON
     let dataRes;
     try {
-      dataRes = JSON.parse(text);
-    } catch (err) {
-      console.error("No se pudo parsear JSON:", err);
-      Alert.alert("Error", "El servidor devolvió una respuesta inválida.");
-      return;
-    }
-    // Verificamos si la respuesta fue exitosa
-    if (response.ok && dataRes.user) {
-      await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
-      login(dataRes.user);
-      Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre}`);
-    } else {
-      Alert.alert("Error", dataRes.message || "Credenciales inválidas.");
+      const response = await loginRequest(data.email, data.password);
+
+      // Intentamos leer la respuesta como texto primero
+      const text = await response.text();
+
+      // Intentamos convertir a JSON
+      let dataRes;
+      try {
+        dataRes = JSON.parse(text);
+      } catch (err) {
+        console.error("No pudo parsear JSON:", err);
+        Alert.alert("Error", "El servidor devolvió una respuesta inválida.");
+        return;
+      }
+      // Verificamos si la respuesta fue exitosa
+      if (response.ok && dataRes.user) {
+        await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
+        login(dataRes.user);
+        Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre}`);
+      } else {
+        Alert.alert("Error", dataRes.message || "Credenciales inválidas.");
+      }
+
+    } catch (error) {
+      console.error("Error login (catch):", error);
+      Alert.alert("Error", error.message || "Error para iniciar sesión.");
     }
 
   } catch (error) {
@@ -78,19 +91,47 @@ const onGoogleButtonPress = async () => {
 
     let dataRes;
     try {
-      dataRes = JSON.parse(text);
-    } catch (err) {
-      console.error("Error al parsear JSON:", err);
-      Alert.alert("Error", "Respuesta inválida del servidor.");
-      return;
-    }
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const { idToken } = await GoogleSignin.signIn();
 
-    if (response.ok && dataRes.user) {
-      await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
-      login(dataRes.user);
-      Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre || dataRes.user.correo}`);
-    } else {
-      Alert.alert("Error", dataRes.message || "No se pudo iniciar sesión con Google.");
+      if (!idToken) {
+        Alert.alert("Error", "No se pudo obtener token de Google.");
+        return;
+      }
+
+      // Firebase login
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      await auth().signInWithCredential(googleCredential);
+
+      // Enviar token al backend
+      const response = await googleLoginRequest(idToken);
+      const text = await response.text();
+
+      let dataRes;
+      try {
+        dataRes = JSON.parse(text);
+      } catch (err) {
+        console.error("Error al parsear JSON:", err);
+        Alert.alert("Error", "Respuesta inválida del servidor.");
+        return;
+      }
+
+      if (response.ok && dataRes.user) {
+        await AsyncStorage.setItem("userData", JSON.stringify(dataRes.user));
+        login(dataRes.user);
+        Alert.alert("Bienvenido", `Hola ${dataRes.user.nombre || dataRes.user.correo}`);
+      } else {
+        Alert.alert("Error", dataRes.message || "No se pudo iniciar sesión con Google.");
+      }
+    } catch (error) {
+      console.error("Error con Google Sign-In:", error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED)
+        Alert.alert("Cancelado", "Inicio de sesión cancelado.");
+      else if (error.code === statusCodes.IN_PROGRESS)
+        Alert.alert("Espera", "Ya se está iniciando sesión.");
+      else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE)
+        Alert.alert("Error", "Servicios de Google Play no disponibles.");
+      else Alert.alert("Error", "No se pudo iniciar sesión con Google.");
     }
   } catch (error) {
     console.error("Error con Google Sign-In:", error);

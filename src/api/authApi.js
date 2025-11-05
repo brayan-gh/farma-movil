@@ -5,7 +5,7 @@ export const loginRequest = async (email, password) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ correo: email, password }), 
+    body: JSON.stringify({ correo: email, password }),
   });
   return response;
 };
@@ -30,7 +30,7 @@ export const googleLoginRequest = async (idToken) => {
     });
     return response;
   } catch (error) {
-    console.error("Error en googleLoginRequest:", error);
+    console.error("Error de googleLoginRequest:", error);
     throw error;
   }
 };
