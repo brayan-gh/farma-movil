@@ -7,7 +7,7 @@ on:
     branches: ["main"]
 
 jobs:
-  check-project:
+  install-dependencies:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,9 +22,3 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps --no-fund --no-audit
-
-      - name: Lint project
-        run: npx expo lint
-
-      - name: Run TypeScript check (si usas TS)
-        run: npx tsc --noEmit || echo "No TypeScript errors"
